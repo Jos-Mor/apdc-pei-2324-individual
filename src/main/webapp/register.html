@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Registration</title>
+    <link rel="stylesheet" type="text/css" href="/utils/styles.css">
+</head>
+<body>
+<div class="container">
+    <h2>User Registration</h2>
+    <form id="registrationForm">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+        <div id="passwordError" style="color: red;"></div>
+
+        <label for="confirmPassword">Confirm Password:</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" required>
+        <div id="confirmPasswordError" style="color: red;"></div>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$">
+
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="telNumber">Telephone:</label>
+        <input type="text" id="telNumber" name="telephone" required>
+
+        <label for="profession">Profession (not required):</label>
+        <input type="text" id="profession" name="profession">
+
+        <label for="workplace">Workplace (not required):</label>
+        <input type="text" id="workplace" name="workplace">
+
+        <label for="address">Address (not required):</label>
+        <input type="text" id="address" name="address">
+
+        <label for="postal_code">Postal code (not required):</label>
+        <input type="text" id="postal_code" name="postal_code">
+
+        <label for="NIF">NIF (not required):</label>
+        <input type="text" id="NIF" name="NIF">
+
+        <button type="submit" id="submitButton" disabled>Register </button>
+    </form>
+</div>
+
+<script>
+
+
+    function checkButton() {
+        let submitButton = document.getElementById("submitButton");
+        let password = document.getElementById("password").value;
+        let confirmPassword = document.getElementById("confirmPassword").value;
+        let email = document.getElementById("email").value;
+        let name = document.getElementById("name").value;
+        let telNumber = document.getElementById("telNumber").value;
+        if (name === "" || telNumber === "" || telNumber.length !== 9 ||confirmPassword !== password
+            || password.length < 5 || !validateEmail(email)){
+            submitButton.disable();
+        } else {
+            submitButton.enable()
+        }
+    }
+
+    document.getElementById("email").addEventListener("input", checkButton);
+    document.getElementById("name").addEventListener("input", checkButton);
+    document.getElementById("telNumber").addEventListener("input", checkButton);
+
+    document.getElementById("password").addEventListener("input", function() {
+        let password = document.getElementById("password").value;
+        if (password.length < 5) {
+            document.getElementById("passwordError").innerText = "Password must be at least 5 characters long.";
+        } else {
+            document.getElementById("passwordError").innerText = "";
+        }
+        checkButton();
+    });
+
+    document.getElementById("confirmPassword").addEventListener("input", function() {
+        let password = document.getElementById("password").value;
+        let confirmPassword = document.getElementById("confirmPassword").value;
+
+        if (!(password === confirmPassword)) {
+            document.getElementById("confirmPasswordError").innerText = "Passwords don't match.";
+        } else {
+            document.getElementById("confirmPasswordError").innerText = "";
+        }
+        checkButton();
+    });
+
+    document.getElementById("registrationForm").addEventListener("submit", async function(event) {
+        event.preventDefault();
+
+        let formData = {
+            username: document.getElementById("username").value,
+            password: document.getElementById("password").value,
+            confirm_password: document.getElementById("confirmPassword").value,
+            email: document.getElementById("email").value,
+            name: document.getElementById("name").value,
+            tel_number: document.getElementById("telNumber").value,
+            profession: document.getElementById("profession").value || "",
+            workplace: document.getElementById("workplace").value || "",
+            address: document.getElementById("address").value || "",
+            postalCode: document.getElementById("postal_code").value || "",
+            NIF: document.getElementById("NIF").value || ""
+        };
+
+        try {
+            const response = await fetch("/rest/register", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                alert("Registration successful! Please wait, an administrator will activate your account shortly.");
+                window.location.href = "/main.html";
+            } else {
+                const errorMessage = await response.text();
+                alert("Registration failed: " + errorMessage);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert("An error occurred while processing your request.");
+        }
+    });
+
+    const re = new RegExp("^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,4}$")
+    function validateEmail(email){
+        return String(email)
+            .toLowerCase()
+            .match(re);
+    }
+
+</script>
+</body>
+</html>

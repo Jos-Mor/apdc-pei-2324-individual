@@ -1,10 +1,9 @@
 package pt.unl.fct.di.apdc.firstwebapp.resources;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -13,14 +12,15 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.NewCookie;
 import javax.ws.rs.core.Cookie;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import javax.ws.rs.core.*;
 import javax.ws.rs.core.Response.Status;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import pt.unl.fct.di.apdc.firstwebapp.util.LoginData;
 import pt.unl.fct.di.apdc.firstwebapp.Authentication.SignatureUtils;
-import pt.unl.fct.di.apdc.firstwebapp.util.UserData;
 
+import com.google.cloud.Timestamp;
+import com.google.cloud.datastore.*;
 import com.google.gson.Gson;
 
 
@@ -29,111 +29,167 @@ import com.google.gson.Gson;
 public class LoginResource {
 	
 	//Settings that must be in the database
-	public static final String ADMIN = "Admin";
+	public static final String AM = "Application Manager";
 	public static final String BACKOFFICE = "Backoffice";
-	public static final String REGULAR = "Regular";
-	private static final String key = "dhsjfhndkjvnjdsdjhfkjdsjfjhdskjhfkjsdhfhdkjhkfajkdkajfhdkmc";	
-		
-	public static Map<String, UserData> users = new HashMap<String, UserData>();
-	
+	public static final String USER = "User";
+	public static final String SUPERUSER = "Super-User";
+	public static final String ACTIVE_STATE = "Active";
+	public static final String INACTIVE_STATE= "Inactive";
+	public static final String COOKIE_NAME = "session::apdc";
+
+	private static final String key = "dhsjfhndkjvnjdsdjhfkjdsjfjhdskjhfkjsdhfhdkjhkfajkdkajfhdkmc";
+
+	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+
+
 	private static final Logger LOG = Logger.getLogger(LoginResource.class.getName());
+
+	@Context HttpServletRequest request;
+	@Context HttpHeaders headers;
 	private final Gson g = new Gson();
 	
 	public LoginResource() {}
 	
 	@POST
-	@Path("/")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response doLogin(LoginData data) {
 		LOG.fine("Login attempt by user: " + data.username);
-		
-		if(!checkPassword(data)) {
-			return Response.status(Status.FORBIDDEN).entity("Incorrect username or password.").build();
-		}
-		
-		String id = UUID.randomUUID().toString();
-		long currentTime = System.currentTimeMillis();
-		String fields = data.username+"."+ id +"."+REGULAR+"."+currentTime+"."+1000*60*60*2;
-		
-		String signature = SignatureUtils.calculateHMac(key, fields);
-		
-		if(signature == null) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Error while signing token. See logs.").build();
-		}
-		
-		String value =  fields + "." + signature;
-		NewCookie cookie = new NewCookie("session::apdc", value, "/", null, "comment", 1000*60*60*2, false, true);
-		
-		return Response.ok().cookie(cookie).build();
-	}
-			
-	public static boolean checkPermissions(Cookie cookie, String role) {
-		if (cookie == null || cookie.getValue() == null) {
-			return false;
-		}
 
-		String value = cookie.getValue();
-		String[] values = value.split("\\.");
-	
-		String signatureNew = SignatureUtils.calculateHMac(key, values[0]+"."+values[1]+"."+values[2]+"."+values[3]+"."+values[4]);
-		String signatureOld = values[5];
-					
-		if(!signatureNew.equals(signatureOld)) {
-			return false;
-		}
+		Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
+		Key ctrsKey = datastore.newKeyFactory().addAncestor(PathElement.of("User", data.username)).setKind("UserStats").newKey("counters");
+		Key logKey = datastore.allocateId((datastore.newKeyFactory().addAncestor(PathElement.of("User", data.username))).setKind("UserLog").newKey());
+		Transaction txn = datastore.newTransaction();
+		try {
+			Entity user = txn.get(userKey);
+			if (user == null) {
+				LOG.warning("Failed login attempt for username " + data.username + ".");
+				return Response.status(Response.Status.FORBIDDEN).build();
+			}
+			if (user.getString("state").equals(INACTIVE_STATE)) {
+				LOG.warning("User " + data.username + " does not have the account activated.");
+				return Response.status(Response.Status.FORBIDDEN).build();
+			}
+			Entity stats = txn.get(ctrsKey);
+			if (stats == null){
+				stats = Entity.newBuilder(ctrsKey)
+						.set("user_stats_logins", 0L)
+						.set("user_stats_failed", 0L)
+						.set("user_first_login", Timestamp.now())
+						.set("user_last_login", Timestamp.now())
+						.build();
+			}
+			if (user.getString("pwd").equals(DigestUtils.sha512Hex(data.password))) {
 
-		int neededRole = convertRole(role);
-		int userInSessionRole = convertRole(values[2]);
-		
-		if(userInSessionRole < neededRole) {
-			return false;
+				String id = UUID.randomUUID().toString();
+				String role = user.getString("role");
+				Timestamp created_at = Timestamp.now();
+				String fields = data.username+"."+ id +"."+role+"."+created_at+"."+60*60*2;
+				String signature = SignatureUtils.calculateHMac(key, fields);
+
+				if(signature == null) {
+					return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Error while signing token. See logs.").build();
+				}
+
+				String value =  fields + "." + signature;
+				NewCookie cookie = new NewCookie(COOKIE_NAME, value, "/", null, "comment", 60*60*2, false, true);
+
+				updateStatLog(true, txn, logKey, ctrsKey, stats);
+				LOG.info("User " + data.username + " logged in successfully.");
+				return Response.ok().cookie(cookie).build();
+			}
+			else {
+				updateStatLog(false, txn, logKey, ctrsKey, stats);
+				LOG.info("Attempted login in user account '" + data.username + "'");
+				return Response.status(Response.Status.FORBIDDEN).entity("Incorrect username or password.").build();
+			}
+		} catch (Exception e){
+			txn.rollback();
+			LOG.severe(e.getMessage());
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			if (txn.isActive()) {
+				txn.rollback();
+			}
 		}
-		
-		if(System.currentTimeMillis() > (Long.valueOf(values[3]) + Long.valueOf(values[4])*1000)) {
-			
-			return false;
-		}
-		
-			
-		return true;
 	}
-	
+
+	private void updateStatLog (Boolean success, Transaction txn, Key logKey, Key statsKey, Entity stats){
+		Entity usStats = Entity.newBuilder(statsKey)
+				.set("user_stats_logins", ((success) ? 1L : 0L) + stats.getLong("user_stats_logins"))
+				.set("user_stats_failed", ((success) ? 0L : 1L) + stats.getLong("user_stats_failed"))
+				.set("user_first_login", stats.getTimestamp("user_first_login"))
+				.set("user_last_login", Timestamp.now())
+				.set("user_last_attempt", Timestamp.now())
+				.build();
+		if (success) {
+			Entity log = Entity.newBuilder(logKey)
+					.set("user_login_ip", request.getRemoteAddr())
+					.set("user_login_host", request.getRemoteHost())
+					.set("user_login_latlon", (headers == null) ? null : StringValue.newBuilder(headers.getHeaderString("X-AppEngine-CityLatLong"))
+							.setExcludeFromIndexes(true).build())
+					.set("user_login_city", (headers == null) ? null : headers.getHeaderString("X-AppEngine-City"))
+					.set("user_login_country", (headers == null) ? null : headers.getHeaderString("X-AppEngine-Country"))
+					.build();
+			txn.put(log, usStats);
+		}
+		else
+			txn.put(usStats);
+		txn.commit();
+	}
+/*
 	private static boolean checkPassword(LoginData data)  {
 		UserData user = users.get(data.username);
-		
+
 		if(user == null || !user.password.equals(data.password)) {
 			return false;
 		}
-		
+
 		return true;
 	}
-	
-	private static int convertRole(String role) {
-		int result = 0;
-		
-		switch(role) {
-			case BACKOFFICE:
-				result = 1;
-				break;
-			case ADMIN:
-				result = 2;
-				break;
-			case REGULAR:
-				result = 0;
-				break;
-			default:
-				result = 0;
-				break;
+*/
+
+	public static boolean cookieIsValid(Cookie cookie) {
+		if(cookie == null || cookie.getValue() == null) {
+			return false;
 		}
-		return result;
+		String[] values = extractCookieValues(cookie);
+		String signatureNew = SignatureUtils.calculateHMac(key, values[0]+"."+values[1]+"."+values[2]+"."+values[3]+"."+values[4]);
+		String signatureOld = values[5];
+
+		if(signatureNew == null || !signatureNew.equals(signatureOld)) {
+			return false;
+		}
+		Timestamp creation_time = Timestamp.parseTimestamp(values[3]);
+		Timestamp expiry_time = Timestamp.ofTimeSecondsAndNanos(creation_time.getSeconds() + Long.getLong(values[4]), creation_time.getNanos());
+
+		if(Timestamp.now().compareTo(expiry_time) > 0) //current time is after expiry
+			return false;
+
+		Key userKey = datastore.newKeyFactory().setKind("User").newKey(values[0]);
+		Entity user = datastore.get(userKey);
+
+		return user.getString("state").equals(ACTIVE_STATE);
 	}
-	
-	
+	public static int convertRole(String role) {
+		switch(role) {
+			case SUPERUSER:
+				return 3;
+			case AM:
+				return 2;
+			case BACKOFFICE:
+				return 1;
+			case USER:
+				return 0;
+		}
+		LOG.warning("Roles not converting properly");
+		return -1;
+	}
 	
 	@GET
 	@Path("/{username}")
 	public Response checkUsernameAvailable(@PathParam("username") String username) {
-		UserData user = users.get(username);
+		Key userKey = datastore.newKeyFactory().setKind("User").newKey(username);
+		Entity user = datastore.get(userKey);
 		
 		if(user != null) {
 			return Response.ok().entity(g.toJson(false)).build();
@@ -141,22 +197,9 @@ public class LoginResource {
 		
 		return Response.ok().entity(g.toJson(true)).build();
 	}
-	
-	@POST
-	@Path("/create")
-	@Consumes(MediaType.APPLICATION_JSON)
-	public Response createUser(UserData data) {
-		LOG.fine("Attempting to create user with username: " + data.username);
-		
-		UserData user = users.get(data.username);
-		
-		if(user != null) {
-			return Response.status(Status.FORBIDDEN).entity("User with username " + data.username + " already exists.").build();
-		} 
-		
-		users.put(data.username, data);
-		
-		return Response.ok().build();
-	}
 
+	public static String[] extractCookieValues(Cookie cookie){
+		String value = cookie.getValue();
+		return value.split("\\.");
+	}
 }

@@ -7,7 +7,7 @@
 	<display-name>My First Web Application</display-name>
 
 	<welcome-file-list>
-		<welcome-file>index.html</welcome-file>
+		<welcome-file>main.html</welcome-file>
 	</welcome-file-list>
 	
 	
@@ -20,7 +20,11 @@
 		<error-code>404</error-code>
 		<location>/error/404.html</location>
 	</error-page>
-	
+
+	<listener>
+		<listener-class>rootInitializer</listener-class>
+	</listener>
+
 
 	<servlet>
 		<servlet-name>MainServices</servlet-name>
@@ -28,10 +32,6 @@
 		<init-param>
 			<param-name>jersey.config.server.provider.classnames</param-name>
 			<param-value>pt.unl.fct.di.apdc.firstwebapp.filters.AdditionalResponseHeadersFilter</param-value>
-		</init-param>
-		<init-param>
-			<param-name>jersey.config.servlet.filter.contextPath</param-name>
-			<param-value>/rest/*</param-value>
 		</init-param>
 		<init-param>
 			<param-name>jersey.config.server.provider.packages</param-name>
