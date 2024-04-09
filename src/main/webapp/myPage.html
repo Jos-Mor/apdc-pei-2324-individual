@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Page</title>
+    <link rel="stylesheet" type="text/css" href="/utils/styles.css">
+</head>
+<body>
+    <!-- <button type="submit" id="listUsers">List users</button>
+    <button type="submit" id="changePassword">Change Password</button>
+    <button type="submit" id="cookieShowButton">Show session token</button>
+    <button type="submit" id="logoutButton">Logout</button> -->
+
+    <table>
+        <tr>
+            <td colspan="2" style="font-weight:bold;">Available Services:</td>        
+        </tr>
+        <tr>
+            <!-- OP2: Manage roles, OP3: Activate account, OP4: remove account, OP5: list users, OP6: modify attributes  -->
+            <td><button id="listUsersButton">List users</button></td>
+        </tr>
+        <tr>
+            <!-- OP7 -->
+            <td><button id="changePasswordButton">Change Password</button></td>
+        </tr>
+        <tr>
+            <!-- OP9 -->
+            <td><button id="cookieShowButton">Show session token</button></td>
+        </tr>
+        <tr>
+            <!-- OP10 -->
+            <td><button id="logoutButton">Logout</button></td>
+        </tr>
+      </table>
+
+    <ul>
+        <li><strong>Username:</strong> <span id="cookieUsername"></span></li>
+        <li><strong>ID:</strong> <span id="cookieID"></span></li>
+        <li><strong>Role:</strong> <span id="cookieRole"></span></li>
+        <li><strong>Created At:</strong> <span id="cookieCreatedAt"></span></li>
+        <li><strong>Lifetime:</strong> <span id="cookieLifeTime"></span></li>
+        <li><strong>Signature:</strong> <span id="cookieSignature"></span></li>
+    </ul>
+
+<script>
+
+    document.getElementById("listUsersButton").addEventListener("click", async function(event) {
+        window.location.href = "/listUsers.html";
+    });
+
+    document.getElementById("changePasswordButton").addEventListener("click", async function(event) {
+        window.location.href = "/changePassword.html";
+    });
+
+    document.getElementById("cookieShowButton").addEventListener("click", async function(event) {
+        let value = getCookiePrintable();
+		let valueList = value.split(".");
+        document.getElementById("cookieUsername").innerText = valueList[0];
+        document.getElementById("cookieID").innerText = valueList[1];
+        document.getElementById("cookieRole").innerText = valueList[2];
+        document.getElementById("cookieCreatedAt").innerText = valueList[3] + "." + valueList[4];
+        document.getElementById("cookieLifeTime").innerText = valueList[5];
+        document.getElementById("cookieSignature").innerText = valueList[6];
+    });
+
+    document.getElementById("logoutButton").addEventListener("click", async function(event) {
+        event.preventDefault();
+
+        try {
+            const response = await fetch("/rest/operation/logout", {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Cookie': getCookie()
+                }
+            });
+            if (response.ok) {
+                alert("Logged out.");
+                window.location.href = "/main.html";
+            } else {
+                const errorMessage = await response.text();
+                alert("Logout failed: " + errorMessage);
+            }
+        } catch(error) {
+            console.error('Error', error);
+            alert("An error occurred while processing your request.");
+        }
+    });
+
+    function getCookiePrintable() {
+        let cookie = getCookie();
+        const [cookieName, cookieValue] = cookie.split('=');
+        return decodeURIComponent(cookieValue);
+    }
+
+    function getCookie(){
+        const cookieString = document.cookie;
+        const cookies = cookieString.split(';');
+        for (let cookie of cookies) {
+            const [cookieName, cookieValue] = cookie.split('=');
+            if (cookieName.trim() === "session::apdc") {
+                return cookie;
+            }
+        }
+        return null;
+    }
+</script>
+</body>
+</html>

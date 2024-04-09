@@ -379,18 +379,18 @@ public class OperationResource {
         if (!LoginResource.cookieIsValid(cookie))
             return Response.status(Response.Status.FORBIDDEN).entity("Invalid cookie, please log in again.").build();
 
-        LOG.fine("Change password attempt for user: " + data.username + ", attempt made by user: " + cookieValue[0]);
+        LOG.fine("Change password attempt for user: " + cookieValue[0] + ", attempt made by user: " + cookieValue[0]);
 
-        if (!cookieValue[0].equals(data.username)) {
-            return Response.status(Response.Status.FORBIDDEN).entity("You can only change your own password.").build();
-        }
-
-        Key userKey = datastore.newKeyFactory().setKind("User").newKey(data.username);
+        Key userKey = datastore.newKeyFactory().setKind("User").newKey(cookieValue[0]);
         Transaction txn = datastore.newTransaction();
         try {
             Entity user = txn.get(userKey);
             if (user == null) {
-                LOG.warning("User " + data.username + " does not exist.");
+                LOG.warning("User " + cookieValue[0] + " does not exist.");
+                txn.rollback();
+                return Response.status(Response.Status.FORBIDDEN).build();
+            }
+            if (!user.getString("pwd").equals(DigestUtils.sha512Hex(data.password))){
                 txn.rollback();
                 return Response.status(Response.Status.FORBIDDEN).build();
             }
@@ -398,7 +398,7 @@ public class OperationResource {
                     .set("pwd", DigestUtils.sha512Hex(data.password))
                     .build();
             txn.put(user);
-            LOG.info("User '" + data.username + "' password changed.");
+            LOG.info("User '" + cookieValue[0] + "' password changed.");
             txn.commit();
             return Response.ok().entity("User updated").build();
         } finally {

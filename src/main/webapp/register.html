@@ -61,9 +61,9 @@
         let telNumber = document.getElementById("telNumber").value;
         if (name === "" || telNumber === "" || telNumber.length !== 9 ||confirmPassword !== password
             || password.length < 5 || !validateEmail(email)){
-            submitButton.disable();
+            submitButton.disabled = true;
         } else {
-            submitButton.enable()
+            submitButton.disabled = false;
         }
     }
 

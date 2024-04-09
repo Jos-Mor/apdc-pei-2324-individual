@@ -10,8 +10,6 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.core.NewCookie;
-import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.*;
 import javax.ws.rs.core.Response.Status;
 
@@ -91,7 +89,7 @@ public class LoginResource {
 				}
 
 				String value =  fields + "." + signature;
-				NewCookie cookie = new NewCookie(COOKIE_NAME, value, "/", null, "comment", 60*60*2, false, true);
+				NewCookie cookie = new NewCookie(COOKIE_NAME, value, "/", ".my-project-416118.oa.r.appspot.com", "comment", 60*60*2, false, false);
 
 				updateStatLog(true, txn, logKey, ctrsKey, stats);
 				LOG.info("User " + data.username + " logged in successfully.");
@@ -152,24 +150,37 @@ public class LoginResource {
 		if(cookie == null || cookie.getValue() == null) {
 			return false;
 		}
+		
 		String[] values = extractCookieValues(cookie);
-		String signatureNew = SignatureUtils.calculateHMac(key, values[0]+"."+values[1]+"."+values[2]+"."+values[3]+"."+values[4]);
-		String signatureOld = values[5];
+		for (int i = 0; i < values.length; i++)
+			LOG.warning("COOKIE VALUES: " + values[i]);
+			
+		String signatureNew = SignatureUtils.calculateHMac(key, values[0]+"."+values[1]+"."+values[2]+"."+values[3]+"."+values[4]+"."+values[5]);
+		String signatureOld = values[6];
 
+		LOG.warning("ZÉ: old = " + values[6]);
+		
 		if(signatureNew == null || !signatureNew.equals(signatureOld)) {
 			return false;
 		}
-		Timestamp creation_time = Timestamp.parseTimestamp(values[3]);
-		Timestamp expiry_time = Timestamp.ofTimeSecondsAndNanos(creation_time.getSeconds() + Long.getLong(values[4]), creation_time.getNanos());
+		
+		String timestamp = values[3] + "." + values[4];
+		Timestamp creation_time = Timestamp.parseTimestamp(timestamp);
+		Timestamp expiry_time = Timestamp.ofTimeSecondsAndNanos(creation_time.getSeconds() + Long.getLong(values[5]), creation_time.getNanos());
+		
+		LOG.warning("ZÉ: ts = " + timestamp);
 
 		if(Timestamp.now().compareTo(expiry_time) > 0) //current time is after expiry
 			return false;
-
+		
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(values[0]);
 		Entity user = datastore.get(userKey);
 
+		LOG.warning("ZÉ: user = " + user);
+
 		return user.getString("state").equals(ACTIVE_STATE);
 	}
+
 	public static int convertRole(String role) {
 		switch(role) {
 			case SUPERUSER:
