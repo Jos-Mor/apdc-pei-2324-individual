@@ -158,8 +158,6 @@ public class LoginResource {
 		String signatureNew = SignatureUtils.calculateHMac(key, values[0]+"."+values[1]+"."+values[2]+"."+values[3]+"."+values[4]+"."+values[5]);
 		String signatureOld = values[6];
 
-		LOG.warning("ZÉ: old = " + values[6]);
-		
 		if(signatureNew == null || !signatureNew.equals(signatureOld)) {
 			return false;
 		}

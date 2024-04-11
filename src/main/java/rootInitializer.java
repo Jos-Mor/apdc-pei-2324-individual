@@ -1,6 +1,5 @@
 import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.*;
-import org.apache.commons.codec.digest.DigestUtils;
 
 import javax.servlet.*;
 import javax.servlet.http.*;
@@ -9,7 +8,7 @@ public class rootInitializer implements ServletContextListener, HttpSessionListe
 
     //root user info
     private static final String rootUsername = "root";
-    private static final String rootHashedPassword = "2b64f2e3f9fee1942af9ff60d40aa5a719db33b8ba8dd4864bb4f11e25ca2bee00907de32a59429602336cac832c8f2eeff5177cc14c864dd116c8bf6ca5d9a9";
+    private static final String rootHashedPassword = "99adc231b045331e514a516b4b7680f588e3823213abe901738bc3ad67b2f6fcb3c64efb93d18002588d3ccc1a49efbae1ce20cb43df36b38651f11fa75678e8";
     private static final String rootEmail = "root@gmail.com";
     private static final String rootName = "John Doe";
     private static final String rootTelNumber = "123456789";
@@ -29,7 +28,7 @@ public class rootInitializer implements ServletContextListener, HttpSessionListe
         Transaction txn = datastore.newTransaction();
         try {
             Entity rootUser = Entity.newBuilder(k)
-                    .set("pwd", DigestUtils.sha512Hex(rootHashedPassword))
+                    .set("pwd", rootHashedPassword)
                     .set("creation_time", Timestamp.now())
                     .set("email", rootEmail)
                     .set("name", rootName)
