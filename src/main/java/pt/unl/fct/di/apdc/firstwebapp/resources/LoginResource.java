@@ -37,7 +37,7 @@ public class LoginResource {
 
 	private static final String key = "dhsjfhndkjvnjdsdjhfkjdsjfjhdskjhfkjsdhfhdkjhkfajkdkajfhdkmc";
 
-	private static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+	public static final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 
 
 	private static final Logger LOG = Logger.getLogger(LoginResource.class.getName());
@@ -80,7 +80,7 @@ public class LoginResource {
 
 				String id = UUID.randomUUID().toString();
 				String role = user.getString("role");
-				Timestamp created_at = Timestamp.now();
+				long created_at = System.currentTimeMillis();
 				String fields = data.username+"."+ id +"."+role+"."+created_at+"."+60*60*2;
 				String signature = SignatureUtils.calculateHMac(key, fields);
 
@@ -123,10 +123,6 @@ public class LoginResource {
 			Entity log = Entity.newBuilder(logKey)
 					.set("user_login_ip", request.getRemoteAddr())
 					.set("user_login_host", request.getRemoteHost())
-					.set("user_login_latlon", (headers == null) ? null : StringValue.newBuilder(headers.getHeaderString("X-AppEngine-CityLatLong"))
-							.setExcludeFromIndexes(true).build())
-					.set("user_login_city", (headers == null) ? null : headers.getHeaderString("X-AppEngine-City"))
-					.set("user_login_country", (headers == null) ? null : headers.getHeaderString("X-AppEngine-Country"))
 					.build();
 			txn.put(log, usStats);
 		}
@@ -152,29 +148,22 @@ public class LoginResource {
 		}
 		
 		String[] values = extractCookieValues(cookie);
-		for (int i = 0; i < values.length; i++)
-			LOG.warning("COOKIE VALUES: " + values[i]);
-			
-		String signatureNew = SignatureUtils.calculateHMac(key, values[0]+"."+values[1]+"."+values[2]+"."+values[3]+"."+values[4]+"."+values[5]);
-		String signatureOld = values[6];
+
+		String signatureNew = SignatureUtils.calculateHMac(key, values[0]+"."+values[1]+"."+values[2]+"."+values[3]+"."+values[4]);
+		String signatureOld = values[5];
 
 		if(signatureNew == null || !signatureNew.equals(signatureOld)) {
 			return false;
 		}
-		
-		String timestamp = values[3] + "." + values[4];
-		Timestamp creation_time = Timestamp.parseTimestamp(timestamp);
-		Timestamp expiry_time = Timestamp.ofTimeSecondsAndNanos(creation_time.getSeconds() + Long.getLong(values[5]), creation_time.getNanos());
-		
-		LOG.warning("ZÉ: ts = " + timestamp);
 
-		if(Timestamp.now().compareTo(expiry_time) > 0) //current time is after expiry
+		long expiry_time = Long.parseLong(values[3]) + Long.parseLong(values[4])*1000;
+
+		if (System.currentTimeMillis() - expiry_time > 0) //current time is after expiry
 			return false;
-		
+
+
 		Key userKey = datastore.newKeyFactory().setKind("User").newKey(values[0]);
 		Entity user = datastore.get(userKey);
-
-		LOG.warning("ZÉ: user = " + user);
 
 		return user.getString("state").equals(ACTIVE_STATE);
 	}

@@ -1,6 +1,5 @@
 package pt.unl.fct.di.apdc.firstwebapp.resources;
 
-import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.*;
 import org.apache.commons.codec.digest.DigestUtils;
 import pt.unl.fct.di.apdc.firstwebapp.util.RegistrationData;
@@ -47,7 +46,7 @@ public class RegisterResource {
 
             Entity.Builder builder = Entity.newBuilder(k)
                     .set("pwd", DigestUtils.sha512Hex(data.password))
-                    .set("creation_time", Timestamp.now())
+                    .set("creation_time", System.currentTimeMillis())
                     .set("email", data.email)
                     .set("name", data.name)
                     .set("tel_number", data.tel_number)
@@ -55,16 +54,11 @@ public class RegisterResource {
                     .set("has_photo", data.hasPhoto)
                     .set("role", LoginResource.USER)
                     .set("state", LoginResource.INACTIVE_STATE);
-            if (!data.profession.isEmpty())
-                builder.set("profession", data.profession);
-            if (!data.workplace.isEmpty())
-                builder.set("workplace", data.workplace);
-            if (!data.address.isEmpty())
-                builder.set("address", data.address);
-            if (!data.postalCode.isEmpty())
-                builder.set("postal_code", data.postalCode);
-            if (!data.NIF.isEmpty())
-                builder.set("NIF", data.NIF);
+            builder.set("profession", data.profession.isEmpty() ? "" : data.profession);
+            builder.set("workplace", data.workplace.isEmpty() ? "" : data.workplace);
+            builder.set("address", data.address.isEmpty() ? "" : data.address);
+            builder.set("postal_code", data.postalCode.isEmpty() ? "" : data.postalCode);
+            builder.set("NIF", data.NIF.isEmpty() ? "" : data.NIF);
 
             Entity user = builder.build();
 

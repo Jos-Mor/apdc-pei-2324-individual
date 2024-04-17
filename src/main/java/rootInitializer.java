@@ -1,4 +1,3 @@
-import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.*;
 
 import javax.servlet.*;
@@ -29,12 +28,19 @@ public class rootInitializer implements ServletContextListener, HttpSessionListe
         try {
             Entity rootUser = Entity.newBuilder(k)
                     .set("pwd", rootHashedPassword)
-                    .set("creation_time", Timestamp.now())
+                    .set("creation_time", System.currentTimeMillis())
                     .set("email", rootEmail)
                     .set("name", rootName)
                     .set("tel_number", rootTelNumber)
                     .set("role", rootRole)
                     .set("state", rootState)
+                    .set("profile_status", true)
+                    .set("has_photo", false)
+                    .set("profession", "System Administrator")
+                    .set("workplace", "")
+                    .set("address", "")
+                    .set("postal_code", "")
+                    .set("NIF", "")
                     .build();
 
             txn.put(rootUser);

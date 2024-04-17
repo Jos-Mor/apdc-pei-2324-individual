@@ -5,36 +5,81 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Page</title>
     <link rel="stylesheet" type="text/css" href="/utils/styles.css">
+    <script src="/common.js"></script>
+    <style>
+        /* Add your custom styles here */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        table td:first-child {
+            width: 70%;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 5px;
+        }
+        li strong {
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-    <!-- <button type="submit" id="listUsers">List users</button>
-    <button type="submit" id="changePassword">Change Password</button>
-    <button type="submit" id="cookieShowButton">Show session token</button>
-    <button type="submit" id="logoutButton">Logout</button> -->
-
+<div class="container">
+    <h1>User Page</h1>
     <table>
         <tr>
-            <td colspan="2" style="font-weight:bold;">Available Services:</td>        
+            <td colspan="2" style="font-weight:bold;">Available Services:</td>
         </tr>
         <tr>
-            <!-- OP2: Manage roles, OP3: Activate account, OP4: remove account, OP5: list users, OP6: modify attributes  -->
-            <td><button id="listUsersButton">List users</button></td>
+            <td><button id="listUsersButton">List Users</button></td>
         </tr>
         <tr>
-            <!-- OP7 -->
-            <td><button id="changePasswordButton">Change Password</button></td>
+            <td><button id="changePasswordButton">Change User Password</button></td>
         </tr>
         <tr>
-            <!-- OP9 -->
-            <td><button id="cookieShowButton">Show session token</button></td>
+            <td><button id="cookieShowButton">Show Session Token</button></td>
         </tr>
         <tr>
-            <!-- OP10 -->
             <td><button id="logoutButton">Logout</button></td>
         </tr>
-      </table>
+    </table>
 
-    <ul>
+    <ul id="cookieData" style="display: none;">
         <li><strong>Username:</strong> <span id="cookieUsername"></span></li>
         <li><strong>ID:</strong> <span id="cookieID"></span></li>
         <li><strong>Role:</strong> <span id="cookieRole"></span></li>
@@ -42,15 +87,15 @@
         <li><strong>Lifetime:</strong> <span id="cookieLifeTime"></span></li>
         <li><strong>Signature:</strong> <span id="cookieSignature"></span></li>
     </ul>
+</div>
 
 <script>
+    document.getElementById("changePasswordButton").addEventListener("click", async function(event) {
+        window.location.href = "/changePassword.html";
+    });
 
     document.getElementById("listUsersButton").addEventListener("click", async function(event) {
         window.location.href = "/listUsers.html";
-    });
-
-    document.getElementById("changePasswordButton").addEventListener("click", async function(event) {
-        window.location.href = "/changePassword.html";
     });
 
     document.getElementById("cookieShowButton").addEventListener("click", async function(event) {
@@ -59,9 +104,10 @@
         document.getElementById("cookieUsername").innerText = valueList[0];
         document.getElementById("cookieID").innerText = valueList[1];
         document.getElementById("cookieRole").innerText = valueList[2];
-        document.getElementById("cookieCreatedAt").innerText = valueList[3] + "." + valueList[4];
-        document.getElementById("cookieLifeTime").innerText = valueList[5];
-        document.getElementById("cookieSignature").innerText = valueList[6];
+        document.getElementById("cookieCreatedAt").innerText = formatTimeStamp(valueList[3]);
+        document.getElementById("cookieLifeTime").innerText = secondsToHMS(valueList[4]);
+        document.getElementById("cookieSignature").innerText = valueList[5];
+        document.getElementById("cookieData").style.display = "block";
     });
 
     document.getElementById("logoutButton").addEventListener("click", async function(event) {
@@ -94,17 +140,10 @@
         return decodeURIComponent(cookieValue);
     }
 
-    function getCookie(){
-        const cookieString = document.cookie;
-        const cookies = cookieString.split(';');
-        for (let cookie of cookies) {
-            const [cookieName, cookieValue] = cookie.split('=');
-            if (cookieName.trim() === "session::apdc") {
-                return cookie;
-            }
-        }
-        return null;
-    }
+    //happens at page load
+    window.addEventListener("DOMContentLoaded", () => {
+        timeout();
+    });
 </script>
 </body>
 </html>

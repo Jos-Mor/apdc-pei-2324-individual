@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Registration</title>
     <link rel="stylesheet" type="text/css" href="/utils/styles.css">
+
 </head>
 <body>
 <div class="container">
@@ -29,6 +30,12 @@
 
         <label for="telNumber">Telephone:</label>
         <input type="text" id="telNumber" name="telephone" required>
+
+        <label for="accountType">Account Type:</label>
+        <select id="accountType" name="accountType" required>
+            <option value="true">Private</option>
+            <option value="false" selected>Public</option>
+        </select>
 
         <label for="profession">Profession (not required):</label>
         <input type="text" id="profession" name="profession">
@@ -103,6 +110,7 @@
             email: document.getElementById("email").value,
             name: document.getElementById("name").value,
             tel_number: document.getElementById("telNumber").value,
+            profile: document.getElementById("accountType").value === "true",
             profession: document.getElementById("profession").value || "",
             workplace: document.getElementById("workplace").value || "",
             address: document.getElementById("address").value || "",
@@ -132,7 +140,7 @@
         }
     });
 
-    const re = new RegExp("^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,4}$")
+    const re = new RegExp("^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,4}$");
     function validateEmail(email){
         return String(email)
             .toLowerCase()

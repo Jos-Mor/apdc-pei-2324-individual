@@ -1,7 +1,7 @@
 package pt.unl.fct.di.apdc.firstwebapp.resources;
 
-import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.*;
+import com.google.cloud.datastore.StructuredQuery.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.*;
@@ -35,7 +35,7 @@ public class OperationResource {
     HttpServletRequest request;
 
 
-    private final Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+    private final Datastore datastore = LoginResource.datastore;
 
     public OperationResource() {
     }
@@ -149,7 +149,7 @@ public class OperationResource {
     @POST
     @Path("/remove_user")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response doRemoveUser(@CookieParam(COOKIE_NAME) Cookie cookie) {
+    public Response doRemoveUser(@CookieParam(COOKIE_NAME) Cookie cookie, @QueryParam("username") String username) {
         if (cookie == null) {
             return Response.status(Response.Status.NOT_FOUND).entity("Cookie not found, please log in.").build();
         }
@@ -158,7 +158,6 @@ public class OperationResource {
         if (!LoginResource.cookieIsValid(cookie))
             return Response.status(Response.Status.FORBIDDEN).entity("Invalid cookie, please log in again.").build();
 
-        String username = request.getParameter("username");
         LOG.fine("User removal attempt for user: " + username + ", attempt made by user: " + cookieValue[0]);
 
         if (cookieValue[2].equals(BACKOFFICE)) {
@@ -193,7 +192,8 @@ public class OperationResource {
 
     @GET
     @Path("/list_users")
-    public Response getListUsers(@CookieParam(COOKIE_NAME) Cookie cookie) {
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getListUsers(@CookieParam(COOKIE_NAME) Cookie cookie, @QueryParam("cursor") String startCursor) {
         if (cookie == null) {
             return Response.status(Response.Status.NOT_FOUND).entity("Cookie not found, please log in.").build();
         }
@@ -203,51 +203,33 @@ public class OperationResource {
             return Response.status(Response.Status.FORBIDDEN).entity("Invalid cookie, please log in again.").build();
 
         LOG.fine("User listing attempt for user made by user: " + cookieValue[0]);
-        Query<Entity> query;
-        String startCursor = request.getParameter("cursor");
-        if (startCursor == null || startCursor.isEmpty()) {
-            startCursor = "0";
+        EntityQuery.Builder queryBuilder = Query.newEntityQueryBuilder().setKind("User").setLimit(PAGE_LIMIT);
+
+        if (startCursor != null && !startCursor.isEmpty()) {
+            queryBuilder.setStartCursor(Cursor.fromUrlSafe(startCursor));
         }
         switch (cookieValue[2]) {
             case SUPERUSER:
-                query = Query.newEntityQueryBuilder()
-                        .setKind("User")
-                        .setLimit(PAGE_LIMIT)
-                        .setStartCursor(Cursor.fromUrlSafe(startCursor))
-                        .build();
                 break;
             case AM:
-                query = Query.newEntityQueryBuilder()
-                        .setKind("User")
-                        .setFilter(StructuredQuery.PropertyFilter.neq("role", SUPERUSER))
-                        .setLimit(PAGE_LIMIT)
-                        .setStartCursor(Cursor.fromUrlSafe(startCursor))
-                        .build();
+                queryBuilder
+                        .setFilter(PropertyFilter.neq("role", SUPERUSER));
                 break;
             case BACKOFFICE:
-                query = Query.newEntityQueryBuilder()
-                        .setKind("User")
-                        .setFilter(StructuredQuery.PropertyFilter.eq("role", USER))
-                        .setLimit(PAGE_LIMIT)
-                        .setStartCursor(Cursor.fromUrlSafe(startCursor))
-                        .build();
+                queryBuilder
+                        .setFilter(PropertyFilter.eq("role", USER));
                 break;
             case USER:
             default:
-                query = Query.newEntityQueryBuilder()
-                        .setKind("User")
-                        .setFilter(StructuredQuery.CompositeFilter.and(
-                                StructuredQuery.PropertyFilter.eq("profile_status", true),
-                                StructuredQuery.PropertyFilter.eq("state", true),
-                                StructuredQuery.PropertyFilter.eq("role", USER)
-                        ))
-                        .setLimit(PAGE_LIMIT)
-                        .setStartCursor(Cursor.fromUrlSafe(startCursor))
-                        .build();
+                queryBuilder
+                        .setFilter(CompositeFilter.and(
+                                PropertyFilter.eq("profile_status", false),
+                                PropertyFilter.eq("state", ACTIVE_STATE),
+                                PropertyFilter.eq("role", USER)
+                        ));
                 break;
         }
-
-        QueryResults<Entity> results = datastore.run(query);
+        QueryResults<Entity> results = datastore.run(queryBuilder.build());
 
         JsonObject jsonResponse = new JsonObject();
         JsonArray usersArray = new JsonArray();
@@ -262,9 +244,10 @@ public class OperationResource {
                 userJson.addProperty("role", userEntity.getString("role"));
                 userJson.addProperty("state", userEntity.getString("state"));
                 userJson.addProperty("pwd", userEntity.getString("pwd"));
-                userJson.addProperty("profile_status", userEntity.getString("profile_status"));
-                userJson.addProperty("creation_time", userEntity.getString("creation_time"));
-                userJson.addProperty("has_photo", userEntity.getString("has_photo"));
+                userJson.addProperty("profile_status", userEntity.getBoolean("profile_status"));
+                userJson.addProperty("tel_number", userEntity.getString("tel_number"));
+                userJson.addProperty("creation_time", userEntity.getLong("creation_time"));
+                userJson.addProperty("has_photo", userEntity.getBoolean("has_photo"));
                 userJson.addProperty("profession", userEntity.getString("profession"));
                 userJson.addProperty("workplace", userEntity.getString("workplace"));
                 userJson.addProperty("address", userEntity.getString("address"));
@@ -274,13 +257,13 @@ public class OperationResource {
             usersArray.add(userJson);
         }
         jsonResponse.add("users", usersArray);
-
         // If there are more results, include next page cursor
         if (results.hasNext()) {
             Cursor endCursor = results.getCursorAfter();
             jsonResponse.addProperty("nextCursor", endCursor.toUrlSafe());
         }
-        return Response.ok().entity(jsonResponse).build();
+        String json = new Gson().toJson(jsonResponse);
+        return Response.ok().entity(json).type("application/json").build();
     }
 
     @POST
@@ -418,9 +401,9 @@ public class OperationResource {
             return Response.status(Response.Status.FORBIDDEN).entity("Invalid cookie, please log in again.").build();
         LOG.fine("Logout attempt made by user: " + cookieValue[0]);
 
-        String newValue = cookieValue[0]+"."+cookieValue[1]+"."+cookieValue[2]+"."+ Timestamp.now()+"."+(-1);     //expired validity cookie made to rewrite the old one
+        String newValue = cookieValue[0]+"."+cookieValue[1]+"."+cookieValue[2]+"."+ System.currentTimeMillis()+"."+(-1);     //expired validity cookie made to rewrite the old one
 
-        NewCookie newCookie = new NewCookie(COOKIE_NAME, newValue, "/", null, "comment", (-1), false, true);
+        NewCookie newCookie = new NewCookie(COOKIE_NAME, newValue, "/", ".my-project-416118.oa.r.appspot.com", "comment", 60*60*2, false, false);
         return Response.ok().cookie(newCookie).build();
     }
 }

@@ -13,7 +13,7 @@ public class RegistrationData {
     public String address;
     public String postalCode;
     public String NIF;
-    public boolean hasPhoto;
+    public boolean hasPhoto = false;
     public String tel_number;
 
     public RegistrationData() {}

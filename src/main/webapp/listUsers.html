@@ -4,43 +4,547 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User List</title>
-    <link rel="stylesheet" type="text/css" href="/utils/styles.css">
+    <script src="/common.js"></script>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            word-wrap: break-word; /* Wrap long text within cells */
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .pwd-column {
+            max-width: 150px; /* Limit the width of password column */
+            overflow-wrap: break-word; /* Wrap long words */
+        }
+        button {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 2px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .modal {
+            display: none; /* Hide the modal by default */
+            position: fixed; /* Position the modal relative to the viewport */
+            top: 50%; /* Center the modal vertically */
+            left: 50%; /* Center the modal horizontally */
+            transform: translate(-50%, -50%); /* Center the modal precisely */
+            z-index: 1000; /* Ensure the modal appears on top of other content */
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+            width: 80%; /* Adjust the width as needed */
+            max-width: 600px; /* Set a maximum width for the modal */
+            padding: 20px; /* Add some padding */
+            border-radius: 10px; /* Add rounded corners */
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3); /* Add a shadow for depth */
+        }
+
+        .modal-content {
+            background-color: #fff; /* White background for the content */
+            padding: 20px; /* Add padding */
+            border-radius: 10px; /* Add rounded corners */
+        }
+
+        .close {
+            position: absolute; /* Position the close button relative to the modal */
+            top: 10px; /* Adjust the top position */
+            right: 10px; /* Adjust the right position */
+            cursor: pointer; /* Change cursor to pointer on hover */
+            font-size: 24px; /* Set font size */
+            color: #888; /* Light gray color for the close button */
+        }
+
+        .close:hover {
+            color: #000; /* Change color on hover */
+        }
+
+    </style>
 </head>
 <body>
 <div class="container">
     <h2>User List</h2>
 
     <table id="userTable">
-      <tr>
-        <th>Username</th>
-        <th>Email</th>
-        <th>Name</th>
-        <th>State</th>
-        <th>Role</th>
-      </tr>
+        <tr>
+            <th>Actions</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Name</th>
+            <th>Telephone Number</th>
+            <th>State</th>
+            <th>Role</th>
+            <th class="pwd-column">Password</th>
+            <th>Profile Status</th>
+            <th>Creation Time</th>
+            <th>Has Photo</th>
+            <th>Profession</th>
+            <th>Workplace</th>
+            <th>Address</th>
+            <th>Postal Code</th>
+            <th>NIF</th>
+        </tr>
     </table>
-</div>
+    <button id="loadMoreButton">Load More</button>
 
+    <div id="changeRoleModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Change User Role</h2>
+            <!-- Form for changing user role -->
+            <form id="changeRoleForm">
+                <label for="newRole">New Role:</label>
+                <select id="newRole" name="newRole">
+                    <option value="User">USER</option>
+                    <option value="Backoffice">GBO</option>
+                    <option value="Application Manager">GA</option>
+                    <option value="Super-User">SU</option>
+                </select>
+                <br><br>
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="changeStateModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Activate/Deactivate user</h2>
+            <form id="changeStateForm">
+                <label for="newState">New State:</label>
+                <select id="newState" name="newState">
+                    <option value="Active" selected>Active</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
+                <br><br>
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+    </div>
+    <div id="removeModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Remove User</h2>
+            <p id="removeWarning"></p>
+            <form id="removeForm">
+                <button type="submit">Yes</button>
+                <button type="button">No</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="changeAttributesModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Change User Attributes</h2>
+            <form id="changeAttributesForm">
+                <label for="modEmail">Email:</label>
+                <input type="email" id="modEmail" name="email"><br><br>
+                <label for="modName">Name:</label>
+                <input type="text" id="modName" name="name"><br><br>
+                <label for="tel_number">Telephone Number:</label>
+                <input type="text" id="tel_number" name="name"><br><br>
+                <label for="status">Profile Status:</label>
+                <select id="status" name="accountType" required>
+                    <option value="true" selected>Private</option>
+                    <option value="false">Public</option>
+                </select><br><br>
+                <label for="hasPhoto">Has Photo:</label>
+                <select id="hasPhoto" name="hasPhoto" required>
+                    <option value="true">true</option>
+                    <option value="false" selected>false</option>
+                </select><br><br>
+                <label for="profession">Profession:</label>
+                <input type="text" id="profession" name="name"><br><br>
+                <label for="workplace">Workplace:</label>
+                <input type="text" id="workplace" name="name"><br><br>
+                <label for="address">Address:</label>
+                <input type="text" id="address" name="name"><br><br>
+                <label for="postalCode">Postal Code:</label>
+                <input type="text" id="postalCode" name="name"><br><br>
+                <label for="nif">NIF:</label>
+                <input type="text" id="nif" name="name"><br><br>
+
+
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+    </div>
+
+    <input type="hidden" id="username" name="username">
+    <input type="hidden" id="creation_time" name="creation_time">
+</div>
 <script>
-        fetch("/rest/operation/list_users")
-        .then(response => response.json())
-        .then(data => {
-            const tableBody = document.getElementById('userTable');
-            data.forEach(user => {
-                const row = tableBody.insertRow();
-                row.innerHTML = `
-                <td>${user.username}</td>
-                <td>${user.email}</td>
-                <td>${user.name}</td>
-                <td>${user.state}</td>
-                <td>${user.role}</td>
-                `;
+    let nextPageCursor = null;
+    loadUsers(null);
+    async function loadUsers(cursor) {
+        const loadMoreButton = document.getElementById("loadMoreButton");
+        loadMoreButton.disabled = true;
+        try {
+            const response = await fetch(`/rest/operation/list_users${cursor ? `?cursor=${cursor}` : ''}`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Cookie': getCookie(),
+                    'Content-Type': 'application/json'
+                }
             });
-        })
-        .catch(error => {
-            console.error('Error fetching user data:', error);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch users: ${response.status} - ${response.statusText}`);
+            }
+            const data = await response.json();
+            console.log(data);
+            const tableBody = document.getElementById("userTable");
+            data.users.forEach(user => {
+                const row = tableBody.insertRow();
+                const actionCell = row.insertCell();
+                const buttonsContainer = document.createElement('div');
+                // Add change role button
+                const actionButtonChangeRole = document.createElement('button');
+                actionButtonChangeRole.innerText = 'Change Role';
+                actionButtonChangeRole.className = 'change-role-button';
+                buttonsContainer.appendChild(actionButtonChangeRole);
+
+                // Add change state button
+                const actionButtonChangeState = document.createElement('button');
+                actionButtonChangeState.innerText = 'Activate/Deactivate';
+                actionButtonChangeState.className = 'change-state-button';
+                buttonsContainer.appendChild(actionButtonChangeState);
+
+                // Add remove user button
+                const actionButtonRemoveUser = document.createElement('button');
+                actionButtonRemoveUser.innerText = 'Remove';
+                actionButtonRemoveUser.className = 'remove-user-button';
+                buttonsContainer.appendChild(actionButtonRemoveUser);
+
+                // Add change attributes button
+                const actionButtonChangeAttributes = document.createElement('button');
+                actionButtonChangeAttributes.innerText = 'Change Attributes';
+                actionButtonChangeAttributes.className = 'change-attributes-button';
+                buttonsContainer.appendChild(actionButtonChangeAttributes);
+
+                actionCell.appendChild(buttonsContainer);
+
+                const propertiesToShow = ['username', 'email', 'name','tel_number', 'state', 'role',
+                    'pwd', 'profile_status', 'creation_time', 'has_photo', 'profession',
+                    'workplace', 'address', 'postal_code', 'NIF'];
+                propertiesToShow.forEach(property => {
+                    let cellContent = user[property] || '';
+                    // Handle password display
+                    if (property === 'creation_time' && user[property] !== null) {
+                        cellContent = formatTimeStamp(user[property]);
+                    }
+                    else if (property === 'pwd' && user[property] !== null) {
+                        cellContent = stringBreakDown(user[property]);
+                    }
+                    else if (property === 'profile_status' && user[property] !== null){
+                        cellContent = user[property] ? 'Private' : 'Public';
+                    }
+                    row.insertCell().innerText = cellContent;
+                });
+            });
+            nextPageCursor = data.nextCursor;
+        } catch (error) {
+            console.log('Error loading users: ', error)
+        } finally {
+            loadMoreButton.disabled = false;
+            reloadModals();
+        }
+    }
+
+    document.getElementById("loadMoreButton").addEventListener("click", async () => {
+        if (nextPageCursor !== null) {
+            await loadUsers(nextPageCursor); // Load next page of users
+        } else {
+            console.log("No more users to load.");
+            document.getElementById("loadMoreButton").disabled = true;
+        }
+    });
+
+    //Modals
+    function reloadModals() {
+        //Change Role modal
+        const changeRoleModal = document.getElementById("changeRoleModal");
+        const changeRoleButtons = document.querySelectorAll(".change-role-button");
+        function openChangeRoleModal(username) {
+            document.getElementById("username").value = username;
+            changeRoleModal.style.display = "block";
+        }
+        function closeChangeRoleModal() {
+            changeRoleModal.style.display = "none";
+        }
+
+        changeRoleButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Retrieve the closest row element
+                const row = button.closest('tr');
+                // Find the username cell within the row
+                const usernameCell = row.querySelector('td:nth-child(2)');
+                // Extract the username text
+                const username = usernameCell.innerText;
+                // Open the modal with the username
+                document.getElementById("username").value = username;
+                openChangeRoleModal(username);
+            });
+        });
+        window.addEventListener('click', event => {
+            if (event.target === changeRoleModal || event.target === document.querySelector("#changeRoleModal .close")) {
+                closeChangeRoleModal();
+            }
         });
 
+        // Function to handle form submission
+        async function handleRoleChangeSubmit(event) {
+            event.preventDefault();
+            let formData = {
+                username: document.getElementById("username").value,
+                role: document.getElementById("newRole").value
+            };
+            try {
+                const changeRoleResponse = await fetch("/rest/operation/change_role", {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Cookie': getCookie(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                })
+                if (!changeRoleResponse.ok){
+                    throw new Error(`Failed to change role: ${changeRoleResponse.status} - ${changeRoleResponse.statusText}`);
+                }
+                closeChangeRoleModal();
+            } catch (error){
+                console.log('Error changing role: ', error);
+            }
+            closeChangeRoleModal(); // Close the modal after submission
+        }
+
+        // Add event listener to the form for form submission
+        document.getElementById("changeRoleForm").addEventListener('submit', handleRoleChangeSubmit);
+
+
+        //Activate/Deactivate Modal
+        const changeStateModal = document.getElementById("changeStateModal");
+        const changeStateButtons = document.querySelectorAll(".change-state-button");
+        function openChangeStateModal(username) {
+            document.getElementById("username").value = username;
+            changeStateModal.style.display = "block";
+        }
+        function closeChangeStateModal() {
+            changeStateModal.style.display = "none";
+        }
+
+        changeStateButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Retrieve the closest row element
+                const row = button.closest('tr');
+                // Find the username cell within the row
+                const usernameCell = row.querySelector('td:nth-child(2)');
+                // Extract the username text
+                const username = usernameCell.innerText;
+                // Open the modal with the username
+                document.getElementById("username").value = username;
+                openChangeStateModal(username);
+            });
+        });
+        window.addEventListener('click', event => {
+            if (event.target === changeStateModal || event.target === document.querySelector("#changeStateModal .close")) {
+                closeChangeStateModal();
+            }
+        });
+
+        async function handleStateChangeSubmit(event) {
+            event.preventDefault();
+            let formData = {
+                username: document.getElementById("username").value,
+                state: document.getElementById("newState").value
+            };
+            try {
+                const changeStateResponse = await fetch("/rest/operation/change_state", {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Cookie': getCookie(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                })
+                if (!changeStateResponse.ok){
+                    throw new Error(`Failed to change state: ${changeStateResponse.status} - ${changeStateResponse.statusText}`);
+                }
+                closeChangeStateModal();
+            } catch (error){
+                console.log('Error changing state: ', error);
+            }
+            closeChangeStateModal(); // Close the modal after submission
+        }
+        document.getElementById("changeStateForm").addEventListener('submit', handleStateChangeSubmit);
+
+        //Remove Modal
+        const removeModal = document.getElementById("removeModal");
+        const removeButtons = document.querySelectorAll(".remove-user-button");
+        function openRemoveModal(username) {
+            document.getElementById("username").value = username;
+            document.getElementById("removeWarning").textContent = `Are you sure you want to remove ${username}?`;
+            removeModal.style.display = "block";
+        }
+        function closeRemoveModal() {
+            removeModal.style.display = "none";
+        }
+
+        removeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Retrieve the closest row element
+                const row = button.closest('tr');
+                // Find the username cell within the row
+                const usernameCell = row.querySelector('td:nth-child(2)');
+                // Extract the username text
+                const username = usernameCell.innerText;
+                // Open the modal with the username
+                openRemoveModal(username);
+            });
+        });
+        window.addEventListener('click', event => {
+            if (event.target === removeModal || event.target === document.querySelector("#removeModal .close") || event.target.matches("#removeModal button[type='button']")) {
+                closeRemoveModal();
+            }
+        });
+
+        async function handleRemoveSubmit(event) {
+            event.preventDefault();
+            let username = document.getElementById("username").value;
+            try {
+                const removeResponse = await fetch(`/rest/operation/remove_user?username=${username}`, {                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Cookie': getCookie(),
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!removeResponse.ok){
+                    throw new Error(`Failed to remove user: ${removeResponse.status} - ${removeResponse.statusText}`);
+                }
+                closeRemoveModal();
+            } catch (error){
+                console.log('Error removing user: ', error);
+            }
+        }
+        document.getElementById("removeForm").addEventListener('submit', handleRemoveSubmit);
+
+        // Change Attributes Modal
+        const changeAttributesModal = document.getElementById("changeAttributesModal");
+        const changeAttributesButtons = document.querySelectorAll(".change-attributes-button");
+
+        function openChangeAttributesModal(userData) {
+            document.getElementById("username").value = userData.username;
+            document.getElementById("modEmail").value = userData.email || "";
+            document.getElementById("modName").value = userData.name || "";
+            document.getElementById("tel_number").value = userData.tel_number || "";
+            document.getElementById("status").value = userData.profile;
+            document.getElementById("hasPhoto").value = userData.hasPhoto;
+            document.getElementById("profession").value = userData.profession || "";
+            document.getElementById("workplace").value = userData.workplace || "";
+            document.getElementById("address").value = userData.address || "";
+            document.getElementById("postalCode").value = userData.postalCode || "";
+            document.getElementById("nif").value = userData.NIF || "";
+            document.getElementById("creation_time").value = userData.creation_time;
+            changeAttributesModal.style.display = "block";
+        }
+
+        function closeChangeAttributesModal() {
+            changeAttributesModal.style.display = "none";
+        }
+
+        changeAttributesButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const row = button.closest('tr');
+                const usernameCell = row.querySelector('td:nth-child(2)');
+                const emailCell = row.querySelector('td:nth-child(3)');
+                const nameCell = row.querySelector('td:nth-child(4)');
+                const telCell = row.querySelector('td:nth-child(5)');
+                const statusCell = row.querySelector('td:nth-child(9)');
+                const creationTimeCell = row.querySelector('td:nth-child(10)')
+                const photoCell = row.querySelector('td:nth-child(11)');
+                const professionCell = row.querySelector('td:nth-child(12)');
+                const workplaceCell = row.querySelector('td:nth-child(13)');
+                const addressCell = row.querySelector('td:nth-child(14)');
+                const postalCell = row.querySelector('td:nth-child(15)');
+                const nifCell = row.querySelector('td:nth-child(16)');
+
+                const userData = {
+                    username: usernameCell.innerText,
+                    email: emailCell.innerText,
+                    name: nameCell.innerText,
+                    tel_number: telCell.innerText,
+                    profile: statusCell.innerText,
+                    creation_time: creationTimeCell.innerText,
+                    hasPhoto: photoCell.innerText,
+                    profession: professionCell.innerText,
+                    workplace: workplaceCell.innerText,
+                    address: addressCell.innerText,
+                    postalCode: postalCell.innerText,
+                    NIF: nifCell.innerText
+                };
+                openChangeAttributesModal(userData);
+            });
+        });
+
+        window.addEventListener('click', event => {
+            if (event.target === changeAttributesModal || event.target === document.querySelector("#changeAttributesModal .close")) {
+                closeChangeAttributesModal();
+            }
+        });
+
+        async function handleChangeAttributesSubmit(event) {
+            event.preventDefault();
+            const formData = {
+                username: document.getElementById("username").value,
+                email: document.getElementById("modEmail").value,
+                name: document.getElementById("modName").value,
+                tel_number: document.getElementById("tel_number").value,
+                profile: document.getElementById("status").value,
+                hasPhoto: document.getElementById("hasPhoto").value,
+                profession: document.getElementById("profession").value,
+                workplace: document.getElementById("workplace").value,
+                address: document.getElementById("address").value,
+                postalCode: document.getElementById("postalCode").value,
+                NIF: document.getElementById("nif").value,
+                creation_time: document.getElementById("creation_time").value
+            };
+            try {
+                const response = await fetch("/rest/operation/modify_attribute", {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Cookie': getCookie(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to change attributes: ${response.status} - ${response.statusText}`);
+                }
+                closeChangeAttributesModal();
+            } catch (error) {
+                console.log('Error changing attributes: ', error);
+            }
+        }
+
+        document.getElementById("changeAttributesForm").addEventListener('submit', handleChangeAttributesSubmit);
+
+    }
+    window.addEventListener("DOMContentLoaded", () => {
+        timeout();
+    });
 </script>
 </body>
 </html>
