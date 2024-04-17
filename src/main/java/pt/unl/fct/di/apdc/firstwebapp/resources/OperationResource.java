@@ -310,28 +310,19 @@ public class OperationResource {
             Entity.Builder builder = Entity.newBuilder(k)
                     .set("pwd", existing_user.getString("pwd"))
                     .set("role", existing_user.getString("role"))
+                    .set("creation_time", existing_user.getLong("creation_time"))
                     .set("state", existing_user.getString("state"));
 
-            if (!data.email.isEmpty())
-                builder.set("email", data.email);
-            if (!data.name.isEmpty())
-                builder.set("name", data.name);
-            if (!data.tel_number.isEmpty())
-                builder.set("tel_number", data.tel_number);
-            if (data.profile != existing_user.getBoolean("profile_status"))
-                builder.set("profile_status", data.profile);
-            if (data.hasPhoto != existing_user.getBoolean("has_photo"))
-                builder.set("has_photo", data.hasPhoto);
-            if (!data.profession.isEmpty())
-                builder.set("profession", data.profession);
-            if (!data.workplace.isEmpty())
-                builder.set("workplace", data.workplace);
-            if (!data.address.isEmpty())
-                builder.set("address", data.address);
-            if (!data.postalCode.isEmpty())
-                builder.set("postal_code", data.postalCode);
-            if (!data.NIF.isEmpty())
-                builder.set("NIF", data.NIF);
+            builder.set("email", data.email)
+                .set("name", data.name)
+                .set("tel_number", data.tel_number)
+                .set("profile_status", data.profile)
+                .set("has_photo", data.hasPhoto)
+                .set("profession", data.profession)
+                .set("workplace", data.workplace)
+                .set("address", data.address)
+                .set("postal_code", data.postalCode)
+                .set("NIF", data.NIF);
 
             Entity user = builder.build();
 

@@ -180,7 +180,6 @@
     </div>
 
     <input type="hidden" id="username" name="username">
-    <input type="hidden" id="creation_time" name="creation_time">
 </div>
 <script>
     let nextPageCursor = null;
@@ -456,7 +455,6 @@
             document.getElementById("address").value = userData.address || "";
             document.getElementById("postalCode").value = userData.postalCode || "";
             document.getElementById("nif").value = userData.NIF || "";
-            document.getElementById("creation_time").value = userData.creation_time;
             changeAttributesModal.style.display = "block";
         }
 
@@ -486,7 +484,6 @@
                     name: nameCell.innerText,
                     tel_number: telCell.innerText,
                     profile: statusCell.innerText,
-                    creation_time: creationTimeCell.innerText,
                     hasPhoto: photoCell.innerText,
                     profession: professionCell.innerText,
                     workplace: workplaceCell.innerText,
@@ -518,7 +515,6 @@
                 address: document.getElementById("address").value,
                 postalCode: document.getElementById("postalCode").value,
                 NIF: document.getElementById("nif").value,
-                creation_time: document.getElementById("creation_time").value
             };
             try {
                 const response = await fetch("/rest/operation/modify_attribute", {
